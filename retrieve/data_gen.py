@@ -1,4 +1,4 @@
-import asyncio
+import loguru as logger
 from pathlib import Path
 import random
 import re
@@ -39,7 +39,11 @@ class QuestionGenerator:
             max_ood_samples: int = 100,
             chunk_size: int = 200
     ):
-        self.model = model
+        if model.startswith("openai"):
+            self.model = model
+        else:
+            logger.info("Local model specified. Make sure to run with: lmql serve-model")
+            self.model = lmql.model(model)
         self.chunk_size = chunk_size
         self.docs_id = self._load_docs(docs_id)
         random.shuffle(self.docs_id)
