@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "retrieve"
+version = "0.1.0"
+description = ""
+authors = [
+    "Bradley-Butcher <bradleydpbutcher@gmail.com>",
+    "SaraR-1 <s.romiti01@gmail.com>"
+]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4.0"
+sentence-transformers = "^2.2.2"
+unstructured = {extras = ["local-inference"], version = "^0.8.1"}
+lmql = "^0.0.6.6"
+tqdm = "^4.65.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
