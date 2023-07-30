@@ -15,6 +15,7 @@ unstructured = {extras = ["local-inference"], version = "^0.8.1"}
 lmql = "^0.0.6.6"
 tqdm = "^4.65.0"
 loguru = "^0.7.0"
+datasets = "^2.14.1"
 
 
 [build-system]

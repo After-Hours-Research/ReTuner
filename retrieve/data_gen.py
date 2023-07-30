@@ -2,16 +2,16 @@ import loguru as logger
 from pathlib import Path
 import random
 import re
-from typing import List, Tuple
+from typing import List, Tuple, Union
 import lmql
 import torch
 from tqdm import tqdm
 
-from retrieve.data_load import load_document
+from retrieve.data_load import process_document
 from torch.utils.data import Dataset
 
 import transformers
-
+import datasets
 class TextDataset(Dataset):
     def __init__(self, tokenizer, texts):
         self.texts = [
@@ -32,8 +32,8 @@ class TextDataset(Dataset):
 class QuestionGenerator:
     def __init__(
             self, 
-            docs_id: List[Path],
-            docs_ood: List[Path],
+            docs_id: Union[List[str], List[Path]],
+            docs_ood: Union[List[str], List[Path]],
             model = "openai/gpt-3.5-turbo",
             max_id_samples: int = 1000,
             max_ood_samples: int = 100,
@@ -46,15 +46,15 @@ class QuestionGenerator:
             self.model = lmql.model(model)
         self.chunk_size = chunk_size
         self.docs_id = self._load_docs(docs_id)
-        random.shuffle(self.docs_id)
-        self.docs_ood = self._load_docs(docs_ood)
+        random.shuffle(self.docs_id)  
+        self.docs_ood = self._load_docs(docs_ood)          
         self.max_id_samples = min(len(self.docs_id), max_id_samples)
         self.max_ood_samples = min(len(self.docs_ood), max_ood_samples)
 
     def _load_docs(self, docs):
         loaded_docs = []
         for doc in docs:
-            loaded_docs.extend(load_document(doc, min_chunk_size=self.chunk_size))
+            loaded_docs.extend(process_document(doc, min_chunk_size=self.chunk_size))
         return loaded_docs
         
     @lmql.query
@@ -156,6 +156,31 @@ class QuestionGenerator:
         docs_ood = [f for f in ood_directory.iterdir() if not f.is_dir()]
         return cls(docs_id, docs_ood, model, max_id_samples, max_ood_samples, chunk_size)
     
+    @classmethod
+    def from_hf_dataset(
+        cls,
+        dataset_name: str,
+        dataset_version: str,
+        text_column: str = "text",
+        train_split: str = "train",
+        test_split: str = "test",
+        model: str = "openai/gpt-3.5-turbo",
+        max_id_samples: int = 1000,
+        max_ood_samples: int = 100,
+        chunk_size: int = 200,
+    ):
+        dataset = datasets.load_dataset(dataset_name, dataset_version)
+        docs_id = dataset[train_split][text_column]
+        docs_ood = dataset[test_split][text_column]
+        return cls(
+            docs_id, 
+            docs_ood, 
+            model, 
+            max_id_samples, 
+            max_ood_samples, 
+            chunk_size
+        )
+
     def save_dataset(
         self,
         file_path: Path,

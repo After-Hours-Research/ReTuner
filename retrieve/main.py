@@ -7,10 +7,20 @@ from transformers import AutoTokenizer
 tokenizer = AutoTokenizer.from_pretrained('sentence-transformers/all-mpnet-base-v2')
 base_path = Path(__file__).parents[1] / "test_data"
 
-qg = QuestionGenerator.from_directory(
-    id_directory=base_path / "id",
-    ood_directory=base_path / "ood",
-    max_id_samples=3, 
+# qg = QuestionGenerator.from_directory(
+#     id_directory=base_path / "id",
+#     ood_directory=base_path / "ood",
+#     max_id_samples=3, 
+#     max_ood_samples=2,
+# )
+
+qg = QuestionGenerator.from_hf_dataset(
+    dataset_name="cnn_dailymail",
+    dataset_version="3.0.0",
+    text_column="article",
+    train_split="train",
+    test_split="test",
+    max_id_samples=3,
     max_ood_samples=2,
 )
 
