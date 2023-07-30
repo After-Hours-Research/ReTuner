@@ -1,3 +1,4 @@
+from functools import partial
 import loguru as logger
 from pathlib import Path
 import random
@@ -14,18 +15,16 @@ import transformers
 import datasets
 class TextDataset(Dataset):
     def __init__(self, tokenizer, texts):
-        self.texts = [
-            (
-                tokenizer(item['question'], padding=True, truncation=True, return_tensors='pt'), 
-                tokenizer(item['chunk'], padding=True, truncation=True, return_tensors='pt')
-            ) 
-            for item in texts
-        ]
+        self.tok_func = partial(tokenizer, padding=True, truncation=True, return_tensors='pt')
+        self.texts = texts
 
     def __len__(self):
         return len(self.texts)
 
     def __getitem__(self, idx):
+        return (self.tok_func(self.texts[idx]['question']), self.tok_func(self.texts[idx]['chunk']))
+
+    def get_text(self, idx):
         return self.texts[idx]
 
 
@@ -37,8 +36,13 @@ class QuestionGenerator:
             model = "openai/gpt-3.5-turbo",
             max_id_samples: int = 1000,
             max_ood_samples: int = 100,
-            chunk_size: int = 200
+            chunk_size: int = 600,
+            chunk_ceiling: int = 1000,
+            seed: int = 42
     ):
+        self.seed = seed
+        self.chunk_ceiling = chunk_ceiling
+        random.seed(self.seed)
         if model.startswith("openai"):
             self.model = model
         else:
@@ -54,7 +58,7 @@ class QuestionGenerator:
     def _load_docs(self, docs):
         loaded_docs = []
         for doc in docs:
-            loaded_docs.extend(process_document(doc, min_chunk_size=self.chunk_size))
+            loaded_docs.extend(process_document(doc, min_chunk_size=self.chunk_size, max_chunk_size=self.chunk_ceiling))
         return loaded_docs
         
     @lmql.query
@@ -69,7 +73,7 @@ class QuestionGenerator:
             """
             {text}
 
-            Come up with a list of orthogonal questions that could reasonably be answered from the above text. \n
+            Without referring to the text specifically, come up with a list of orthogonal questions that could reasonably be answered from the information provided in the above text. \n
             """
             for i in range(int(n)):
                 "<QUESTION> [QUESTION] </QUESTION>"
@@ -167,7 +171,8 @@ class QuestionGenerator:
         model: str = "openai/gpt-3.5-turbo",
         max_id_samples: int = 1000,
         max_ood_samples: int = 100,
-        chunk_size: int = 200,
+        chunk_size: int = 600,
+        chunk_ceiling: int = 1000,
     ):
         dataset = datasets.load_dataset(dataset_name, dataset_version)
         docs_id = dataset[train_split][text_column]
@@ -178,7 +183,8 @@ class QuestionGenerator:
             model, 
             max_id_samples, 
             max_ood_samples, 
-            chunk_size
+            chunk_size,
+            chunk_ceiling
         )
 
     def save_dataset(
