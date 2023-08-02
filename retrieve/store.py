@@ -30,6 +30,8 @@ class RetrievalStore:
         logger.info("Loading dataset")
         self.loaded_dataset = torch.load(dataset_path)[name.value]
 
+        self.loaded_dataset = self.loaded_dataset.get_unique_chunks()
+
         self.client = chromadb.PersistentClient(path=str(store_path))
         self.collection = self.client.create_collection(name=name.name, metadata={"hnsw:space": metric}, get_or_create=True)
 
@@ -54,7 +56,7 @@ class RetrievalStore:
     def load_documents(self):
         logger.info("Loading documents")
         for i in tqdm(range(len(self.loaded_dataset)), total=len(self.loaded_dataset), desc="Loading documents"):
-            chunk_text = self.loaded_dataset.get_text(i)["chunk"]
+            chunk_text = self.loaded_dataset.get_text(i)
             tokens = self.token_func(chunk_text)
             embd = self.model(tokens)
             self._add_document(embd, chunk_text, i)
@@ -63,7 +65,6 @@ class RetrievalStore:
         tokens = self.token_func(query)
         embd = emb_model(tokens).squeeze(0).tolist()
         results = self.collection.query(query_embeddings=embd, n_results=k)
-        breakpoint()
         return results
 
 

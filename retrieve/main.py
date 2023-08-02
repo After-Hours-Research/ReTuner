@@ -3,9 +3,11 @@ from retrieve.data_gen import QuestionGenerator
 from pathlib import Path
 
 from transformers import AutoTokenizer, AutoModel
+from retrieve.eval import RetrievalEvaluator
 from retrieve.models import HFEmbedder
 
 from retrieve.store import DataSplit, RetrievalStore
+import torch
 
 tokenizer = AutoTokenizer.from_pretrained('sentence-transformers/all-mpnet-base-v2')
 model = HFEmbedder('sentence-transformers/all-mpnet-base-v2')
@@ -19,23 +21,25 @@ base_path = Path(__file__).parents[1] / "test_data"
 #     max_ood_samples=2,
 # )
 
-# qg = QuestionGenerator.from_hf_dataset(
-#     dataset_name="cnn_dailymail",
-#     dataset_version="3.0.0",
-#     text_column="article",
-#     train_split="train",
-#     test_split="test",
-#     max_id_samples=3,
-#     max_ood_samples=2,
-# )
+qg = QuestionGenerator.from_hf_dataset(
+    dataset_name="cnn_dailymail",
+    dataset_version="3.0.0",
+    text_column="article",
+    train_split="train",
+    test_split="test",
+    max_id_samples=5,
+    max_ood_samples=300,
+    intermittent_save_path=base_path / "int_temp"
+)
 
-# qg.save_dataset(
-#     file_path=base_path / "test_save.pt",
-#     tokenizer=tokenizer, 
-#     n_train_per_doc=4, 
-#     n_test_id_per_doc=1, 
-#     n_test_ood_per_doc=1,
-# )
+qg.save_dataset(
+    file_path=base_path / "test_save.pt",
+    tokenizer=tokenizer, 
+    n_train_per_doc=4, 
+    n_test_id_per_doc=1, 
+    n_test_ood_per_doc=5,
+    resume=True
+)
 
 rs_ood = RetrievalStore(
     dataset_path = base_path / "test_save.pt",
@@ -46,8 +50,16 @@ rs_ood = RetrievalStore(
     metric="l2"
 )
 
+evalr = RetrievalEvaluator(rs_ood, model)
 
-rez = rs_ood.query("Who is Hussian?", emb_model=model)
+ds = torch.load(base_path / "test_save.pt")[DataSplit.TEST_OOD.value]
+
+acc = evalr.evaluate(ds, k_retrievals=5)
+evalr.plot_performance("test.png")
+
+print(acc)
+
+
 
 # 1 - Create a Dataset of Q/C using LLM
 # 2 - Finetune new head for emb model on Q/Cs

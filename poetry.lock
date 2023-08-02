@@ -1324,6 +1324,24 @@ doc = ["sphinx (!=4.1.0)", "pydata-sphinx-theme (==0.9.0)", "sphinx-panels (>=0.
 dev = ["mypy", "typing-extensions", "pycodestyle", "flake8"]
 
 [[package]]
+name = "seaborn"
+version = "0.12.2"
+description = "Statistical data visualization"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+matplotlib = ">=3.1,<3.6.1 || >3.6.1"
+numpy = ">=1.17,<1.24.0 || >1.24.0"
+pandas = ">=0.25"
+
+[package.extras]
+dev = ["pytest", "pytest-cov", "pytest-xdist", "flake8", "mypy", "pandas-stubs", "pre-commit", "flit"]
+docs = ["numpydoc", "nbconvert", "ipykernel", "sphinx-copybutton", "sphinx-issues", "sphinx-design", "pyyaml", "pydata_sphinx_theme (==0.10.0rc2)"]
+stats = ["scipy (>=1.3)", "statsmodels (>=0.10)"]
+
+[[package]]
 name = "sentence-transformers"
 version = "2.2.2"
 description = "Multilingual text embeddings"
@@ -1840,7 +1858,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "1fb64b11f2380d1f9032a1a84c04bcb400e1ea7312605ae532c0e5967f8100d0"
+content-hash = "2b63cea5ad0338c9702e991bf43fb2c73d836b8f8ce4380e792ee19245ed1d27"
 
 [metadata.files]
 aiohttp = []
@@ -1954,6 +1972,7 @@ requests = []
 safetensors = []
 scikit-learn = []
 scipy = []
+seaborn = []
 sentence-transformers = []
 sentencepiece = []
 setuptools = []
