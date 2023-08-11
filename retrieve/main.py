@@ -57,8 +57,6 @@ ds = torch.load(base_path / "test_save.pt")[DataSplit.TEST_OOD.value]
 acc = evalr.evaluate(ds, k_retrievals=5)
 evalr.plot_performance("test.png")
 
-print(acc)
-
 
 
 # 1 - Create a Dataset of Q/C using LLM
