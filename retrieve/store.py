@@ -15,6 +15,8 @@ class DataSplit(Enum):
     TRAIN = "train"
     TEST_ID = "test_id"
     TEST_OOD = "test_ood"
+    VAL_ID = "val_id"
+    VAL_OOD = "val_ood"
 
 class RetrievalStore:
 
@@ -58,12 +60,16 @@ class RetrievalStore:
         for i in tqdm(range(len(self.loaded_dataset)), total=len(self.loaded_dataset), desc="Loading documents"):
             chunk_text = self.loaded_dataset.get_text(i)
             tokens = self.token_func(chunk_text)
+            tokens["input_ids"] = tokens["input_ids"].to(self.model.device)
+            tokens["attention_mask"] = tokens["attention_mask"].to(self.model.device)
             embd = self.model(tokens)
             self._add_document(embd, chunk_text, i)
 
     def query(self, query: str, emb_model, k=2):
         tokens = self.token_func(query)
-        embd = emb_model(tokens).squeeze(0).tolist()
+        tokens["input_ids"] = tokens["input_ids"].to(emb_model.device)
+        tokens["attention_mask"] = tokens["attention_mask"].to(emb_model.device)
+        embd = emb_model.predict(tokens).squeeze(0).tolist()
         results = self.collection.query(query_embeddings=embd, n_results=k)
         return results
 

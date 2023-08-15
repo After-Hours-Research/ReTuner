@@ -19,6 +19,8 @@ datasets = "^2.14.1"
 transformers = "^4.31.0"
 chromadb = "^0.4.3"
 seaborn = "^0.12.2"
+pytorch-lightning = "^2.0.6"
+wandb = "^0.15.8"
 
 
 [build-system]

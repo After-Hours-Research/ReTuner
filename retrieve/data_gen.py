@@ -14,10 +14,20 @@ from torch.utils.data import Dataset
 import transformers
 import datasets
 import pandas as pd
+
 class RetrievalDataset(Dataset):
     def __init__(self, tokenizer, texts):
-        self.tok_func = partial(tokenizer, padding=True, truncation=True, return_tensors='pt')
-        self.texts = texts
+        self.tok_func = partial(tokenizer, padding='max_length', truncation=True, return_tensors='pt', max_length=512)
+        self.texts = self.remove_nans(texts)
+        logger.info(f"Dataset initialized with {len(self.texts)} texts")
+    
+    def remove_nans(self, texts):
+        logger.info(f"Dataset has {len(texts)} texts")
+        for i, text in enumerate(texts):
+            if isinstance(text["question"], float) or isinstance(text["chunk"], float):
+                texts.pop(i)
+        logger.info(f"Filtered dataset - now has {len(texts)} texts")
+        return texts
 
     def __len__(self):
         return len(self.texts)
@@ -103,12 +113,13 @@ class QuestionGenerator:
             self,
             text_chunk: str, 
             n_train_questions: int,
+            n_val_questions: int,
             n_test_questions: int,
             temperature: float = 0.8
         ) -> Tuple[List[dict], List[dict]]:
         results = self._data_gen(
             text=text_chunk, 
-            n=n_train_questions + n_test_questions, 
+            n=n_train_questions + n_test_questions + n_val_questions,
             temperature=temperature
         )
         results = self.extract_questions(results[0].prompt)
@@ -116,68 +127,93 @@ class QuestionGenerator:
             {"question": result, "chunk": text_chunk}
             for result in results
         ]
-        return qc_pairs[:n_train_questions], qc_pairs[n_train_questions:]
+        return qc_pairs[:n_train_questions], \
+            qc_pairs[n_train_questions:n_train_questions+n_val_questions], \
+            qc_pairs[n_train_questions+n_val_questions:]
+
+    def _load_resume_csv(self, path: Path):
+        df = pd.read_csv(path, index_col=0)
+        df = df.dropna()
+        return df.to_dict(orient="records")
     
     def _create_dict_dataset(
         self,
         n_train_per_doc: int,
+        n_val_id_per_doc: int,
+        n_val_ood_per_doc: int,
         n_test_id_per_doc: int,
         n_test_ood_per_doc: int,
         temperature: float = 0.8,
         resume: bool = False,
     ):
         train = []
+        val_id = []
+        val_ood = []
         test_id = []
         test_ood = []
         try:
             if resume:
-                train = pd.read_csv(self.intermittent_save_path / f"train_temp.csv", index_col=0).to_dict(orient="records")
-                test_id = pd.read_csv(self.intermittent_save_path / f"test_id_temp.csv", index_col=0).to_dict(orient="records")
-                test_ood = pd.read_csv(self.intermittent_save_path / f"test_ood_temp.csv", index_col=0).to_dict(orient="records")
+                train = self._load_resume_csv(self.intermittent_save_path / f"train_temp.csv")
+                val_id = self._load_resume_csv(self.intermittent_save_path / f"val_id_temp.csv")
+                val_ood = self._load_resume_csv(self.intermittent_save_path / f"val_ood_temp.csv")
+                test_id = self._load_resume_csv(self.intermittent_save_path / f"test_id_temp.csv")
+                test_ood = self._load_resume_csv(self.intermittent_save_path / f"test_ood_temp.csv")
                 logger.info(f"Resuming from {self.intermittent_save_path} - Records loaded:")
                 logger.info(f"Train: {len(train)}")
+                logger.info(f"Val ID: {len(val_id)}")
+                logger.info(f"Val OOD: {len(val_ood)}")
                 logger.info(f"Test ID: {len(test_id)}")
                 logger.info(f"Test OOD: {len(test_ood)}")
         except FileNotFoundError:
             raise FileNotFoundError("No saved data found. Set resume=False to generate new data.")
-        cn_train = int(len(train) / n_train_per_doc)
-        cn_ood = int(len(test_ood) / n_test_ood_per_doc)
+        cn_id = int(len(train) / n_train_per_doc)
+        cn_ood = int(len(val_ood) / n_val_ood_per_doc)
+
         if self.intermittent_save_path is not None:
             self.intermittent_save_path.mkdir(parents=True, exist_ok=True)
-        for doc in tqdm(self.docs_id[cn_train:self.max_id_samples], desc="Generating in-distribution questions"):
-            train_questions, test_questions = self.generate_questions(
-                doc, n_train_per_doc, n_test_id_per_doc, temperature
+        for doc in tqdm(self.docs_id[cn_id:self.max_id_samples], desc="Generating in-distribution questions"):
+            train_questions, val_questions, test_questions = self.generate_questions(
+                doc, n_train_per_doc, n_val_id_per_doc, n_test_id_per_doc, temperature
             )
             train.extend(train_questions)
+            val_id.extend(val_questions)
             test_id.extend(test_questions)
             if self.intermittent_save_path is not None:
                 pd.DataFrame(train).to_csv(self.intermittent_save_path / f"train_temp.csv")
+                pd.DataFrame(val_id).to_csv(self.intermittent_save_path / f"val_id_temp.csv")
                 pd.DataFrame(test_id).to_csv(self.intermittent_save_path / f"test_id_temp.csv")
         for doc in tqdm(self.docs_ood[cn_ood:self.max_ood_samples], desc="Generating out-of-distribution questions"):
-            _, test_questions = self.generate_questions(
-                doc, 0, n_test_ood_per_doc, temperature
+            _, val_questions, test_questions = self.generate_questions(
+                doc, 0, n_val_ood_per_doc, n_test_ood_per_doc, temperature
             )
+            val_ood.extend(test_questions)
             test_ood.extend(test_questions)
             if self.intermittent_save_path is not None:
+                pd.DataFrame(val_ood).to_csv(self.intermittent_save_path / f"val_ood_temp.csv")
                 pd.DataFrame(test_ood).to_csv(self.intermittent_save_path / f"test_ood_temp.csv")
-        return train, test_id, test_ood
+        return train, val_id, val_ood, test_id, test_ood
     
     def create_dataset(
         self,
         tokenizer: transformers.AutoTokenizer,
         n_train_per_doc: int,
+        n_val_id_per_doc: int,
+        n_val_ood_per_doc: int,
         n_test_id_per_doc: int,
         n_test_ood_per_doc: int,
         temperature: float = 0.8,
         resume: bool = False,
     ):
-        train, test_id, test_ood = self._create_dict_dataset(
-            n_train_per_doc, n_test_id_per_doc, n_test_ood_per_doc, temperature, resume
+        train, val_id, val_ood, test_id, test_ood = self._create_dict_dataset(
+            n_train_per_doc, n_val_id_per_doc, n_val_ood_per_doc, 
+            n_test_id_per_doc, n_test_ood_per_doc, temperature, resume
         )
         train_dataset = RetrievalDataset(tokenizer, train)
+        val_id_dataset = RetrievalDataset(tokenizer, val_id)
+        val_ood_dataset = RetrievalDataset(tokenizer, val_ood)
         test_id_dataset = RetrievalDataset(tokenizer, test_id)
         test_ood_dataset = RetrievalDataset(tokenizer, test_ood)
-        return train_dataset, test_id_dataset, test_ood_dataset
+        return train_dataset, val_id_dataset, val_ood_dataset, test_id_dataset, test_ood_dataset
 
     @classmethod
     def from_directory(
@@ -229,17 +265,22 @@ class QuestionGenerator:
         file_path: Path,
         tokenizer: transformers.AutoTokenizer,
         n_train_per_doc: int,
+        n_val_id_per_doc: int,
+        n_val_ood_per_doc: int,
         n_test_id_per_doc: int,
         n_test_ood_per_doc: int,
         temperature: float = 0.8,
         resume: bool = False,
     ):
-        train_dataset, test_id_dataset, test_ood_dataset = self.create_dataset(
-            tokenizer, n_train_per_doc, n_test_id_per_doc, n_test_ood_per_doc, temperature, resume
+        train_dataset, val_id_dataset, val_ood_dataset, test_id_dataset, test_ood_dataset = self.create_dataset(
+            tokenizer, n_train_per_doc, n_val_id_per_doc, n_val_ood_per_doc, 
+            n_test_id_per_doc, n_test_ood_per_doc, temperature, resume
         )
         file_path.parent.mkdir(parents=True, exist_ok=True)
         torch.save({
             "train": train_dataset,
+            "val_id": val_id_dataset,
+            "val_ood": val_ood_dataset,
             "test_id": test_id_dataset,
             "test_ood": test_ood_dataset
         }, str(file_path))

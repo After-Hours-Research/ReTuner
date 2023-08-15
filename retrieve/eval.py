@@ -6,12 +6,6 @@
 # retrieve chunks given question
 # check if true chunk is in retrieved chunks
 
-from typing import Union
-from retrieve.data_gen import RetrievalDataset
-from retrieve.models import HFEmbedder
-from retrieve.store import RetrievalStore
-
-from transformers import AutoModel, AutoTokenizer
 from tqdm import tqdm
 
 from matplotlib import pyplot as plt
@@ -56,6 +50,6 @@ class RetrievalEvaluator:
             ax.text(row.name, row['Performance'], round(row['Performance'], 2), color='black', ha="center")
         
         if save_path is None:
-            plt.show()
+            return f
         else:
             plt.savefig(save_path)
