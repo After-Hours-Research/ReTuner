@@ -1,0 +1,6 @@
+data/cnn_dailymail/cnn_dailymail.pt filter=lfs diff=lfs merge=lfs -tex
+data/cnn_dailymail/data_temp/test_ood_temp.csv filter=lfs diff=lfs merge=lfs -text
+data/cnn_dailymail/data_temp/train_temp.csv filter=lfs diff=lfs merge=lfs -text
+data/cnn_dailymail/data_temp/val_id_temp.csv filter=lfs diff=lfs merge=lfs -text
+data/cnn_dailymail/data_temp/val_ood_temp.csv filter=lfs diff=lfs merge=lfs -text
+data/cnn_dailymail/data_temp/test_id_temp.csv filter=lfs diff=lfs merge=lfs -text

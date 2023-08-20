@@ -1,0 +1,23 @@
+from_hf: true
+dataset_name: cnn_dailymail
+dataset_version: 3.0.0
+text_column: article
+train_split: train
+validation_split: validation
+test_split: test
+max_id_samples: 500
+max_ood_samples: 300
+base_path: data
+intermittent_save_path: cnn_dailymail/data_temp
+ds_file_path: cnn_dailymail/cnn_dailymail.pt
+tokenizer: sentence-transformers/all-mpnet-base-v2
+n_train_per_doc: 4
+n_val_id_per_doc: 2
+n_val_ood_per_doc: 3
+n_test_id_per_doc: 1
+n_test_ood_per_doc: 2
+resume: True
+model: openai/gpt-3.5-turbo
+# ---- Directory Config
+id_directory: null
+ood_directory: null

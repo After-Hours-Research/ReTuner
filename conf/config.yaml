@@ -1,0 +1,5 @@
+defaults:
+  - model: baseline
+  - training: default
+  - data: dailymailcnn
+  - experiment: testing
