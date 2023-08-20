@@ -1,0 +1,2 @@
+data/stores filter=lfs diff=lfs merge=lfs -text
+data/cnn_dailymail filter=lfs diff=lfs merge=lfs -text

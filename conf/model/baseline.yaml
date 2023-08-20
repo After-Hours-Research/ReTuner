@@ -1,0 +1,4 @@
+base_model: 'sentence-transformers/all-mpnet-base-v2'
+head: 'residual-dropout'
+loss: "triplet"
+margin: 0.5
