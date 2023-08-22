@@ -1,0 +1,23 @@
+from_hf: false
+dataset_name: transformer_papers
+dataset_version: null
+text_column: null
+train_split: null
+validation_split: null
+test_split: null
+max_id_samples: 500
+max_ood_samples: 100
+base_path: data
+intermittent_save_path: transformers/data_temp
+ds_file_path: transformers/transformers.pt
+tokenizer: sentence-transformers/all-mpnet-base-v2
+n_train_per_doc: 4
+n_val_id_per_doc: 2
+n_val_ood_per_doc: 3
+n_test_id_per_doc: 1
+n_test_ood_per_doc: 2
+resume: True
+model: openai/gpt-3.5-turbo
+# ---- Directory Config
+id_directory: transformer_papers/idd
+ood_directory: transformer_papers/ood

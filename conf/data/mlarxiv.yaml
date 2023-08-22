@@ -1,0 +1,23 @@
+from_hf: true
+dataset_name: aalksii/ml-arxiv-papers
+dataset_version: null
+text_column: abstract
+train_split: train
+validation_split: test
+test_split: test
+max_id_samples: 200
+max_ood_samples: 100
+base_path: data
+intermittent_save_path: mlarxiv/data_temp
+ds_file_path: mlarxiv/mlarxiv.pt
+tokenizer: sentence-transformers/all-mpnet-base-v2
+n_train_per_doc: 15
+n_val_id_per_doc: 2
+n_val_ood_per_doc: 3
+n_test_id_per_doc: 1
+n_test_ood_per_doc: 2
+resume: true
+model: openai/gpt-3.5-turbo
+# ---- Directory Config
+id_directory: null
+ood_directory: null

@@ -1,0 +1,5 @@
+project_name: Retuner_MLArxiv3
+entity_name: after-hours
+store_path: "stores/mlarxiv"
+retrieval_metric: "l2"
+k_retrievals: 5

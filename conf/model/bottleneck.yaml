@@ -1,4 +1,4 @@
 base_model: 'sentence-transformers/all-mpnet-base-v2'
-head: 'baseline'
-loss: null
-margin: null
+head: 'bottleneck-dropout'
+loss: "infonce"
+margin: 0.2
