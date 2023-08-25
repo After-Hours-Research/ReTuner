@@ -29,7 +29,7 @@ class QCGenerationCallback:
         raise NotImplementedError
 
 class LengthFilterCallback(QCGenerationCallback):
-    def __init__(self, min_length: int = 100) -> None:
+    def __init__(self, min_length: int = 400) -> None:
         self.min_length = min_length
 
     def on_load(self, loaded: List[str]):
@@ -123,8 +123,8 @@ class QuestionGenerator:
             model = "openai/gpt-3.5-turbo",
             max_id_samples: int = 1000,
             max_ood_samples: int = 100,
-            chunk_size: int = 600,
-            chunk_ceiling: int = 1000,
+            chunk_size: int = 2000,
+            chunk_ceiling: int = 2500,
             seed: int = 42,
             intermittent_save_path: Path = None,
             filter_callbacks: List[QCGenerationCallback] = [QCGenerationCallback()]
@@ -161,26 +161,31 @@ class QuestionGenerator:
     def _data_gen(
         self,
         text: str,
-        test_n: int,
-        train_n: int,
+        n: int,
         temperature: float = 0.8
     ):
         '''lmql
         sample(temperature=temperature)
             """
+            [task: 'retrieval', stage: 'data generation']
+
+            Given this random chunk sampled from a large set of documents:
+
             {text}
 
-            Without referring to the text specifically, come up with a list of {test_n} orthogonal questions that could reasonably be answered from the information provided in the above text. \n
-            The question should have no foresight of the above text. \n
+            Come up with a list of {n} orthogonal questions that could reasonably be answered from the information provided in the above text. \n
+            Rules:
+            -----
+            Rule 1: The question should have no foresight of the above text. \n
+            Rule 2: This is for a synthetic retrieval task, so try to make the questions as diverse as possible. \n
+            Rule 3: Only mention entities by NAME. E.g. "Virgin Media", rather than "the company".
+            Rule 4: Do not specifically refer to the text.
             """
-            for i in range(int(test_n)):
-                "<TESTQUESTION> [QUESTION] </TESTQUESTION>"
-            """
-            Now, come up with a list of {train_n} questions that could reasonably be answered from the information provided in the above text. \n
-            IT CANNOT MATCH ANY OF THE PREVIOUS <TESTQUESTION>s. \n
-            """
-            for i in range(int(train_n)):
-                "<TRAINQUESTION> [QUESTION] </TRAINQUESTION>"
+            for i in range(int(n)):
+                """
+                Remember Rule 1, Rule 2, Rule 3, and Rule 4 !
+                <QUESTION> [QUESTION] </QUESTION>
+                """
         from
             self.model
         where
@@ -209,11 +214,9 @@ class QuestionGenerator:
         '''
 
     def extract_questions(self, text):
-        train_questions = re.findall('<TRAINQUESTION>(.*?)</TRAINQUESTION>', text, re.DOTALL)
+        train_questions = re.findall('<QUESTION>(.*?)</QUESTION>', text, re.DOTALL)
         train_questions = [re.sub('^\s*\d+\.\s*', '', q).strip() for q in train_questions]
-        test_questions = re.findall('<TESTQUESTION>(.*?)</TESTQUESTION>', text, re.DOTALL)
-        test_questions = [re.sub('^\s*\d+\.\s*', '', q).strip() for q in test_questions]
-        return train_questions + test_questions
+        return train_questions
     
     def rank_questions(
         self,
@@ -244,8 +247,7 @@ class QuestionGenerator:
         ) -> Tuple[List[dict], List[dict]]:
         results = self._data_gen(
             text=text_chunk, 
-            train_n=n_train_questions,
-            test_n=n_test_questions + n_val_questions,
+            n=n_train_questions + n_test_questions + n_val_questions,
             temperature=temperature
         )
         results = self.extract_questions(results[0].prompt)
@@ -399,8 +401,13 @@ class QuestionGenerator:
         filter_callbacks: List[QCGenerationCallback] = [QCGenerationCallback()]
     ):
         dataset = datasets.load_dataset(dataset_name, dataset_version)
-        docs_id = dataset[train_split][text_column]
-        docs_ood = dataset[test_split][text_column]
+        if train_split != test_split:
+            docs_id = dataset[train_split][text_column]
+            docs_ood = dataset[test_split][text_column]
+        else:
+            n_rows = len(dataset[train_split])
+            docs_id = dataset[train_split][text_column][:int(n_rows/2)]
+            docs_ood = dataset[train_split][text_column][int(n_rows/2):]
         return cls(
             docs_id=docs_id,
             docs_ood=docs_ood,

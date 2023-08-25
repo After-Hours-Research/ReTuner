@@ -143,6 +143,9 @@ class ResidualAttentionHead(nn.Module):
     def __init__(self, embedding_size: int, num_heads : int =4, dropout: float = 0.3, inverse_bn_mult: int = 2):
         super(ResidualAttentionHead, self).__init__()
         self.norm1 = nn.LayerNorm(embedding_size)
+        self.key = nn.Linear(embedding_size, embedding_size)
+        self.value = nn.Linear(embedding_size, embedding_size)
+        self.query = nn.Linear(embedding_size, embedding_size)
         self.attention = nn.MultiheadAttention(embed_dim=embedding_size, num_heads=num_heads, dropout=dropout, batch_first=True)
         self.norm2 = nn.LayerNorm(embedding_size)
         self.fc1 = nn.Linear(embedding_size, int(embedding_size * inverse_bn_mult))
@@ -159,7 +162,10 @@ class ResidualAttentionHead(nn.Module):
         x = self.norm1(x)
         mask = ~mask.bool()
         mask = mask.unsqueeze(1).expand(x.size(0), x.size(1), x.size(1)).repeat(4, 1, 1)
-        h, _ = self.attention(x, x, x, attn_mask=mask, need_weights=False)
+        key = self.key(x)
+        query = self.query(x)
+        value = self.value(x)
+        h, _ = self.attention(query, key, value, attn_mask=mask, need_weights=False)
         h = self.norm2(h)
         h = self.fc2(self.gelu(self.fc1(h)))
         x = x + h
@@ -217,7 +223,7 @@ class TuningModule(pl.LightningModule):
         shuffled_indices = torch.randperm(embeddings.size(0))
         shuffled_embeddings = embeddings[shuffled_indices]
         shuffled_mask = mask[shuffled_indices]
-        mixup_noise = 0.1 * (shuffled_embeddings - embeddings) * shuffled_mask.unsqueeze(-1)
+        mixup_noise = noise_scale * (shuffled_embeddings - embeddings) * shuffled_mask.unsqueeze(-1)
         return mixup_noise
         
 

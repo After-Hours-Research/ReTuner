@@ -2,3 +2,6 @@ base_model: 'sentence-transformers/all-mpnet-base-v2'
 head: 'baseline'
 loss: null
 margin: null
+adding_noise: false
+noise_max: 0.25
+noise_min: 0.01

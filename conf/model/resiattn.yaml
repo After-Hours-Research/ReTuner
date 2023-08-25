@@ -2,6 +2,6 @@ base_model: 'sentence-transformers/all-mpnet-base-v2'
 head: 'residual-attention'
 loss: "infonce"
 margin: 0.2
-adding_noise: true
+adding_noise: false
 noise_max: 0.25
 noise_min: 0.01
