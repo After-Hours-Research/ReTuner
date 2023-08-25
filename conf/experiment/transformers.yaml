@@ -1,5 +1,5 @@
 project_name: ReTuner_Experiments
 entity_name: after-hours
-store_path: "stores/experiment"
+store_path: "stores/transformers_exp"
 retrieval_metric: "l2"
 k_retrievals: 5

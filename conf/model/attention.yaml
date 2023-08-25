@@ -1,0 +1,4 @@
+base_model: 'sentence-transformers/all-mpnet-base-v2'
+head: 'attention'
+loss: "infonce"
+margin: 0.2
