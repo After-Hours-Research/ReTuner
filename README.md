@@ -13,7 +13,7 @@ This repo is a WIP - theres still lots to work on. Including documentation!
 - [x] Model Tuning
 - [x] MixUp
 - [x] InfoNCE
-- [x] Smart Chunking
+- [ ] Smart Chunking
 
 
 ## Installation
